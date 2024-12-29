@@ -43,6 +43,50 @@ def quat_to_rotmat(quat: torch.Tensor) -> torch.Tensor:
                           2*xz - 2*wy, 2*wx + 2*yz, w2 - x2 - y2 + z2], dim=1).view(B, 3, 3)
     return rotMat
 
+def rotmat_to_aa(R: torch.Tensor) -> torch.Tensor:
+    """
+    将批量旋转矩阵转换为轴角表示。
+
+    参数:
+        R (torch.Tensor): 输入的旋转矩阵，形状为 [B, J, 3, 3]
+
+    返回:
+        axis (torch.Tensor): 旋转轴，形状为 [B, J, 3]，每个轴为单位向量
+        angle (torch.Tensor): 旋转角度，形状为 [B, J]，单位为弧度
+    """
+    # 检查输入是否为有效旋转矩阵
+    if R.shape[-2:] != (3, 3):
+        raise ValueError("输入的旋转矩阵形状必须为 [B, J, 3, 3]")
+
+    # 计算旋转角度
+    trace = torch.einsum('...ii->...', R)  # 计算迹 (tr(R))
+    angle = torch.acos(torch.clamp((trace - 1) / 2, -1.0, 1.0))  # 防止数值超出 [-1, 1]
+
+    # 计算旋转轴
+    sin_angle = torch.sin(angle).unsqueeze(-1) + 1e-8  # 防止 sin(angle) = 0 的问题
+
+    axis = torch.stack([
+        R[..., 2, 1] - R[..., 1, 2],
+        R[..., 0, 2] - R[..., 2, 0],
+        R[..., 1, 0] - R[..., 0, 1]
+    ], dim=-1) / (2 * sin_angle)
+
+    # 处理特殊情况：angle 约为 0 或 π
+    mask_zero = (angle < 1e-6)
+    mask_pi = (torch.abs(angle - torch.pi) < 1e-6)
+
+    # 如果角度为 0，旋转轴可以任意选择，这里设为 [1, 0, 0]
+    axis[mask_zero] = torch.tensor([1.0, 0.0, 0.0], device=R.device)
+
+    # 如果角度为 π，从对角线元素计算旋转轴
+    if mask_pi.any():
+        diag = torch.sqrt((torch.diagonal(R, dim1=-2, dim2=-1) + 1) / 2)  # 从对角线计算
+        axis[mask_pi] = diag[mask_pi]
+
+    # 确保旋转轴归一化
+    axis = axis / torch.norm(axis, dim=-1, keepdim=True)
+
+    return axis
 
 def rot6d_to_rotmat(x: torch.Tensor) -> torch.Tensor:
     """

@@ -1,1 +1,5 @@
-checkpoints/
+*.mp4
+*.png
+checkpoint/
+*.pyc
+data/
