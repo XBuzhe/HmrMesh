@@ -98,8 +98,8 @@ def run_preprocess(video_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='HMR2 demo code')
     parser.add_argument('--checkpoint', type=str, default='checkpoints/hmr2/epoch=35-step=1000000.ckpt', help='Path to pretrained model checkpoint')
-    parser.add_argument('--video', type=str, default='test.mp4', help='Path to pretrained model checkpoint')
-
+    parser.add_argument('--input', type=str, default='ldty1_50.mp4', help='Path to pretrained model checkpoint')
+    parser.add_argument('--output', type=str, default='ooooo.mp4', help='Path to pretrained model checkpoint')
     args = parser.parse_args()
 
     model = HMR2()
@@ -109,9 +109,10 @@ if __name__ == '__main__':
     model = model.to(device)
     model.eval()
 
-    video = args.video
-    imgs, bbx_xys = run_preprocess(video)
+    input = args.input
+    output = args.output
+    imgs, bbx_xys = run_preprocess(input)
     
-    infer_model_vis(model, imgs.cuda(), video, 'out.mp4', bbx_xys)
+    infer_model_vis(model, imgs.cuda(), input, output, bbx_xys)
 
 
